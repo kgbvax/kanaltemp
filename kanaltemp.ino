@@ -3,7 +3,7 @@
 RTCZero rtc;
 
 #define DEBUG
-#include "Sodaq_RN2483.h"
+#include <Sodaq_RN2483.h>
 
 #include <OneWire.h>                              
 #include <DallasTemperature.h>
@@ -34,7 +34,7 @@ void setup()
   pinMode(BEE_VCC, OUTPUT);
   digitalWrite(BEE_VCC, HIGH);
  
-  delay(2000);
+  delay(5000);
   
   debugSerial.begin(57600);
   loraSerial.begin(LoRaBee.getDefaultBaudRate());
@@ -53,13 +53,14 @@ void setup()
   
 }
 
+
+void lowPowerSleep(uint16_t sec) {
+  delay(sec*1000);
+}
+
 void loop()
 {
-   delay(5000);
-
    
-  while (true)
-  {
     sensors.requestTemperatures();  
     float temp=sensors.getTempCByIndex(0);
     // float temp=10;
@@ -107,7 +108,6 @@ void loop()
       default:
         break;
     }
-    delay(theUpdateRate);
-  }
-
+    lowPowerSleep(10);
+    
  }
