@@ -5,7 +5,7 @@
 
 RTCZero rtc;
 
-#define DEBUG
+//#define DEBUG
 #define ONE_WIRE_BUS 1
 
 OneWire oneWire(ONE_WIRE_BUS);
@@ -16,12 +16,13 @@ DallasTemperature sensors(&oneWire);
 
 #ifdef DEBUG
 #define DEB(x) debugSerial.println(x);
-#define SEND_LED(x) digitalWrite(LED_BUILTIN,x)
 #else
 #define DEB(x)
 #endif
 
-const int theUpdateRate=30; //sec
+#define SEND_LED(x) digitalWrite(LED_BUILTIN,x)
+
+const int theUpdateRate=60; //sec
 
 /* use your own keys! */
 const uint8_t devAddr[4] ={ 0x35, 0xAF, 0x16, 0xBE };
