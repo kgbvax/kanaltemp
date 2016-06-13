@@ -36,7 +36,8 @@ void setup()
   // Turn the LoRaBee on
   pinMode(BEE_VCC, OUTPUT);
   digitalWrite(BEE_VCC, HIGH);
-  
+
+  //turn on on board LED to signal startup
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN,HIGH);
   
@@ -74,7 +75,7 @@ void lowPowerSleep(uint16_t sec) {
     sec=1;
     
   DEB("putting 2483 to sleep");
-  LoRaBee.sleep(1000*sec-500); //have the LoRa Module wake up a bit early */
+  LoRaBee.sleep(1000*sec-500); //have the LoRa Module wake up 500msec  early */
   
   rtc.setTime(0, 0, 0);
   rtc.setAlarmTime(0,sec/60,sec%60);
@@ -120,7 +121,7 @@ void loop()
         break;
       case InternalError:
         DEB("Oh No! This shouldn't happen. Something is really wrong! Try restarting the device!\r\nThe program will now halt.");
-        while (1) {};
+        while (1) {}; //TODO handle this better
         break;
       case Busy:
         DEB("The device is busy. Sleeping for 10 extra seconds.");
@@ -128,11 +129,11 @@ void loop()
         break;
       case NetworkFatalError:
         DEB("There is a non-recoverable error with the network connection. You should re-connect.\r\nThe program will now halt.");
-        while (1) {};
+        while (1) {};  //TODO handle this better
         break;
       case NotConnected:
         DEB("The device is not connected to the network. Please connect to the network before attempting to send data.\r\nThe program will now halt.");
-        while (1) {};
+        while (1) {};  //TODO handle this better
         break;
       case NoAcknowledgment:
         DEB("There was no acknowledgment sent back!");
