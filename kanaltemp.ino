@@ -1,12 +1,11 @@
 #include <RTCZero.h>
+#include <Sodaq_RN2483.h>
+#include <OneWire.h>                              
+#include <DallasTemperature.h>
 
 RTCZero rtc;
 
 #define DEBUG
-#include <Sodaq_RN2483.h>
-
-#include <OneWire.h>                              
-#include <DallasTemperature.h>
 #define ONE_WIRE_BUS 1
 
 OneWire oneWire(ONE_WIRE_BUS);
@@ -15,11 +14,14 @@ DallasTemperature sensors(&oneWire);
 #define debugSerial SerialUSB
 #define loraSerial Serial1
 
+#ifdef DEBUG
 #define DEB(x) debugSerial.println(x);
-//#define DEB(x)
+#define SEND_LED(x) digitalWrite(LED_BUILTIN,x)
+#else
+#define DEB(x)
+#endif
 
-
-const int theUpdateRate=30000;
+const int theUpdateRate=30; //sec
 
 /* use your own keys! */
 const uint8_t devAddr[4] ={ 0x35, 0xAF, 0x16, 0xBE };
@@ -33,13 +35,18 @@ void setup()
   // Turn the LoRaBee on
   pinMode(BEE_VCC, OUTPUT);
   digitalWrite(BEE_VCC, HIGH);
- 
-  delay(5000);
   
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN,HIGH);
+  
+  delay(5000);
+
+#ifdef DEBUG
   debugSerial.begin(57600);
+#endif 
+  
   loraSerial.begin(LoRaBee.getDefaultBaudRate());
   
-   
   //LoRaBee.setDiag(debugSerial);
  
   if (LoRaBee.initABP(loraSerial, devAddr, appSKey, nwkSKey, true)) {
@@ -55,14 +62,19 @@ void setup()
 
 void alarmMatch()
 {
-  DEB("Alarm Match!");
 }
 
+/* put the RN2483 and the board to sleep
+ * min sleep time is 1 sec
+ * max sleep time is 00:59:59 
+ */
 void lowPowerSleep(uint16_t sec) {
-   
- /*
+   if (sec<1)
+    sec=1;
+    
   DEB("putting 2483 to sleep");
-  LoRaBee.sleep(59000); //have the LoRa Module wakt up a bit early */
+  LoRaBee.sleep(1000*sec-500); //have the LoRa Module wake up a bit early */
+  
   rtc.setTime(0, 0, 0);
   rtc.setAlarmTime(0,sec/60,sec%60);
   rtc.attachInterrupt(&alarmMatch);
@@ -85,8 +97,12 @@ void loop()
     //highbyte lowbyte
     payload[0]=(uint8_t) (transmit >>8);
     payload[1]=(uint8_t)  0xff & transmit;
+
+    SEND_LED(HIGH);
+    uint8_t res=LoRaBee.send(1, payload, 2);
+    SEND_LED(LOW);
     
-    switch (LoRaBee.send(1, payload, 2))
+    switch (res)
     {
       case NoError:
         DEB("/");
@@ -123,7 +139,7 @@ void loop()
       default:
         break;
     }
-    lowPowerSleep(10);
+    lowPowerSleep(theUpdateRate);
  }
 
 
