@@ -53,9 +53,23 @@ void setup()
   
 }
 
+void alarmMatch()
+{
+  DEB("Alarm Match!");
+}
 
 void lowPowerSleep(uint16_t sec) {
-  delay(sec*1000);
+   
+ /*
+  DEB("putting 2483 to sleep");
+  LoRaBee.sleep(59000); //have the LoRa Module wakt up a bit early */
+  rtc.setTime(0, 0, 0);
+  rtc.setAlarmTime(0,sec/60,sec%60);
+  rtc.attachInterrupt(&alarmMatch);
+  rtc.enableAlarm(rtc.MATCH_HHMMSS); 
+  DEB("standby");
+  rtc.standbyMode();  //sleep....
+  DEB("return from standby"); 
 }
 
 void loop()
@@ -63,14 +77,15 @@ void loop()
    
     sensors.requestTemperatures();  
     float temp=sensors.getTempCByIndex(0);
-    // float temp=10;
      
     int16_t transmit=(int16_t) 10*temp; 
     DEB(transmit);
+  
     uint8_t payload[1];
     //highbyte lowbyte
     payload[0]=(uint8_t) (transmit >>8);
     payload[1]=(uint8_t)  0xff & transmit;
+    
     switch (LoRaBee.send(1, payload, 2))
     {
       case NoError:
@@ -109,5 +124,6 @@ void loop()
         break;
     }
     lowPowerSleep(10);
-    
  }
+
+
