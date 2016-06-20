@@ -6,19 +6,18 @@
 #include <math.h>
 #include <SPI.h>
 
-//#include "cmp.h"
 
 RTCZero rtc;
 
 //#define DEBUG
-//#define DUMMY_TEMP 5
+#define DUMMY_TEMP 7
 
 
 //Coloumb counter defines
 #define INT_LINE 4
 #define POL_LINE 5
 
-static int theUpdateRate =  30 * 60; //sec
+static int theUpdateRate =  10 * 60; //sec
 
 #define debugSerial SerialUSB
 #define loraSerial Serial1
@@ -44,13 +43,10 @@ enum Commands {
   CMD_RESET=0xff             //payload: none; board performs reset (not implemented)
 };
 
-//#define CMD_SET_UPDATE_RATE  0x01 
-//#define CMD_GET_STATS        0x02 
-//#define CMD_RESET            0xFF
-
 static int32_t ccsum = 0;
-static bool intCc = false;
-static bool intAlarm = false;
+//interrupt flags
+static bool intCc = false; //coulomb counter interrupt
+static bool intAlarm = false; // RTC alarm interrupt
 
 static struct  {
    uint16_t messagesTransmitted = 0;
@@ -62,7 +58,7 @@ static uint16_t numTicks = 0;
 static uint32_t totalTickTime = 0;
 static bool direction; //true=charge
 
-static uint8_t recieveBuffer[recv_buffer_sz];
+static uint8_t recieveBuffer[recv_buffer_sz]; //for incoming LoRa messages
 
 /* use your own keys! */
 const uint8_t devAddr[4] = { 0x35, 0xAF, 0x16, 0xBE };
@@ -70,19 +66,12 @@ const uint8_t nwkSKey[16] = { 0x02, 0xB0, 0x7E, 0x01, 0x50, 0x16, 0x02, 0x80, 0x
 const uint8_t appSKey[16] = { 0x00, 0x20, 0xCD, 0x02, 0x70, 0xB1, 0x06, 0x40, 0xB0, 0x09, 0x80, 0x56, 0x0E, 0x40, 0x68, 0x06 };
 
 
-
 void setup()
 {
   // Turn the LoRaBee on
   pinMode(BEE_VCC, OUTPUT);
   digitalWrite(BEE_VCC, HIGH);
-
-  //turn on on board LED to signal startup
-#ifdef DEBUG
-  pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(LED_BUILTIN, HIGH);
-#endif
-
+ 
   //coulomb counter
   pinMode(INT_LINE, INPUT);
   pinMode(POL_LINE, INPUT);
@@ -99,13 +88,11 @@ void setup()
   loraSerial.begin(LoRaBee.getDefaultBaudRate());
 
   //LoRaBee.setDiag(debugSerial);
-
   if (LoRaBee.initABP(loraSerial, devAddr, appSKey, nwkSKey, true)) {
     DEB("Connection to the network was successful.");
   } else {
     DEB("Connection to the network failed!");
   }
-
 
   rtc.begin();
   last_cc_tick = millis();
@@ -163,6 +150,7 @@ void ccisr()
   last_cc_tick = now;
 }
 
+//process incoming LoRa command
 void processCommand(uint16_t numBytesRecieved)
 {
   DEB("recieved command");
@@ -181,7 +169,7 @@ void processCommand(uint16_t numBytesRecieved)
       }
       break;
     case CMD_NOP: //nop
-    break;
+       break;
     default:
       DEB("unkown command");
       break;
@@ -220,7 +208,7 @@ void loop()
     DEB(avgTickSeconds);
     last_pwr_consumption = 614.4 /  avgTickSeconds;
     if (direction == false) {
-      last_pwr_consumption = -last_pwr_consumption;
+      last_pwr_consumption =  last_pwr_consumption * -1;
     }
     totalTickTime = 0; //reset counters
     numTicks = 0;
@@ -238,20 +226,15 @@ void loop()
 
   *(int32_t*) (&payload[2]) = ccsum;  //byte order??
   int16_t consumption = round(last_pwr_consumption * 1000);
-  DEB("consumption=");
-  DEB(last_pwr_consumption);
+  *(int16_t*) (&payload[6]) = consumption;
+
   DEB("coulomb ticks=");
   DEB(ccsum);
 
-  *(int16_t*) (&payload[6]) = consumption;
 
-  SEND_LED(HIGH);
   unsigned long  startmillis = millis();
-
   uint8_t res = LoRaBee.send(1, payload, sizeof(payload));
-
   unsigned long send_duration = millis() - startmillis;
-  SEND_LED(LOW);
 
   switch (res)
   {
@@ -316,7 +299,6 @@ void DFlashUltraDeepSleep()
 
   transmit(0x00); // In case already in sleep, wake
   transmit(0x79); // Now enter sleep
-  //transmit(0x00); // Wake again, for testing
 
   // SPI end
   SPI.end();
