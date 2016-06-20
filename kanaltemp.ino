@@ -35,7 +35,7 @@ const static uint16_t recv_buffer_sz = 32;
 #ifndef DEBUG
 #define SEND_LED(x) digitalWrite(LED_BUILTIN,x)
 #else
-#endig  SEND_LED(x)
+#endif  SEND_LED(x)
 
 enum Commands {
   CMD_NOP =0x00,             // payload:none; no-operation
