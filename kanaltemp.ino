@@ -6,22 +6,22 @@
 #include <math.h>
 #include <SPI.h>
 
-
 RTCZero rtc;
 
 //#define DEBUG
-#define DUMMY_TEMP 7
+//#define DUMMY_TEMP 7
 
+static int theUpdateRate =  5 * 60; //sec
 
 //Coloumb counter defines
 #define INT_LINE 4
 #define POL_LINE 5
 
-static int theUpdateRate =  10 * 60; //sec
+//temp sensor
+#define ONE_WIRE_BUS 3
 
 #define debugSerial SerialUSB
 #define loraSerial Serial1
-#define ONE_WIRE_BUS 3
 
 const static uint16_t recv_buffer_sz = 32;
 
@@ -31,10 +31,7 @@ const static uint16_t recv_buffer_sz = 32;
 #define DEB(x)
 #endif
 
-#ifndef DEBUG
-#define SEND_LED(x) digitalWrite(LED_BUILTIN,x)
-#else
-#endif  SEND_LED(x)
+ 
 
 enum Commands {
   CMD_NOP =0x00,             // payload:none; no-operation
@@ -87,7 +84,10 @@ void setup()
   delay(10000);
   loraSerial.begin(LoRaBee.getDefaultBaudRate());
 
-  //LoRaBee.setDiag(debugSerial);
+#ifdef DEBUG
+  LoRaBee.setDiag(debugSerial);
+#endif
+  
   if (LoRaBee.initABP(loraSerial, devAddr, appSKey, nwkSKey, true)) {
     DEB("Connection to the network was successful.");
   } else {
@@ -114,7 +114,9 @@ void lowPowerSleep(uint16_t sec) {
     sec = 1;
 
   DEB("LoRa to sleep");
-  LoRaBee.sleep(1000 * sec - 500); //have the LoRa Module wake up 500msec  early */
+  uint32_t beesleep=1000L * sec - 500L;
+  DEB(beesleep);
+  LoRaBee.sleep(beesleep); //have the LoRa Module wake up 500msec  early */
 
   rtc.setTime(0, 0, 0);
   rtc.setAlarmTime(0, sec / 60, sec % 60);
@@ -342,4 +344,5 @@ void autonomoReset() {
   __DSB();
   while (1);
 }
+
 
