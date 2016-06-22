@@ -1,0 +1,976 @@
+[
+  {
+    "id": "6f5dfabc.2bd484",
+    "type": "ui_group",
+    "z": "d379d8ae.5f34e8",
+    "name": "Über diesen Sensor",
+    "order": "2",
+    "disp": true,
+    "width": "10"
+  },
+  {
+    "id": "c07abb24.5c0158",
+    "type": "ui_group",
+    "z": "d379d8ae.5f34e8",
+    "name": "Dortmund-Ems Kanal (Beta)",
+    "order": "1",
+    "disp": true,
+    "width": "10"
+  },
+  {
+    "id": "83e6a0b.5bb186",
+    "type": "mqtt-broker",
+    "z": "d379d8ae.5f34e8",
+    "broker": "staging.thethingsnetwork.org",
+    "port": "1883",
+    "clientid": "ergored",
+    "usetls": false,
+    "verifyservercert": false,
+    "compatmode": true,
+    "keepalive": "60",
+    "cleansession": true,
+    "willTopic": "",
+    "willQos": "0",
+    "willRetain": null,
+    "willPayload": "",
+    "birthTopic": "",
+    "birthQos": "0",
+    "birthRetain": "false",
+    "birthPayload": ""
+  },
+  {
+    "id": "1340fcde.d07283",
+    "type": "ui_group",
+    "z": "d379d8ae.5f34e8",
+    "name": "Sensor Energiebilanz",
+    "order": "4",
+    "disp": true,
+    "width": "10"
+  },
+  {
+    "id": "12a1121.7e274ee",
+    "type": "ui_tab",
+    "z": "d379d8ae.5f34e8",
+    "name": "Freifunk Münster",
+    "icon": "dashboard",
+    "theme": "theme-light",
+    "order": "1"
+  },
+  {
+    "id": "5e2695ff.75a17c",
+    "type": "subflow",
+    "name": "CalcConsumption",
+    "info": "",
+    "in": [
+      {
+        "x": 20,
+        "y": 240,
+        "wires": [
+          {
+            "id": "76f2c515.4f5ffc"
+          }
+        ]
+      }
+    ],
+    "out": [
+      {
+        "x": 880,
+        "y": 240,
+        "wires": [
+          {
+            "id": "76f2c515.4f5ffc",
+            "port": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "76f2c515.4f5ffc",
+    "type": "function",
+    "z": "5e2695ff.75a17c",
+    "name": "Calculate Avg Consumption",
+    "func": "var lastCC = global.get(\"lastCC\");\nvar lastTS = global.get(\"lastTS\");\nvar currCC = msg.coloumbCount;\nvar currTS = msg.timestamp_m;\n\nif (lastTS===0) { // in case of startup, first result is nonsense\n    lastTS=currTS;\n}\n\nvar deltaTS = (currTS - lastTS)/1000.0;\n\n\nnode.log(\"lastCC \" + lastCC);\nnode.log(\"lastTS \" + lastTS);\nnode.log(\"currCC \" + currCC);\nnode.log(\"currTS \" + currTS);\n\nvar deltaCC = currCC - lastCC;\n\nnode.log(\"deltaCC \" + deltaCC);\nnode.log(\"deltaTS \" + deltaTS);\n\nvar timeBetweenTicks=deltaTS / Math.abs(deltaCC);\n\nnode.log(\"timeBetweenTicks \" + timeBetweenTicks);\nvar result =  614.4 / timeBetweenTicks;\nif (deltaCC <0 ) {\n    result = -result;\n}\nnode.log(\"result \"+result);\n  \nvar newMsg = { \"payload\": result,\n                \"updateRt\" : deltaTS};\n\nglobal.set(\"lastTS\",currTS);\nglobal.set(\"lastCC\",currCC);\nreturn newMsg;",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 460,
+    "y": 240,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "fbd3a3f5.1c94c",
+    "type": "file",
+    "z": "d379d8ae.5f34e8",
+    "name": "",
+    "filename": "/home/dash/temps",
+    "appendNewline": true,
+    "createDir": false,
+    "overwriteFile": "false",
+    "x": 510,
+    "y": 940,
+    "wires": []
+  },
+  {
+    "id": "61ab7eed.027ce",
+    "type": "csv",
+    "z": "d379d8ae.5f34e8",
+    "name": "",
+    "sep": ",",
+    "hdrin": "",
+    "hdrout": true,
+    "multi": "one",
+    "ret": "\\n",
+    "temp": "payload",
+    "x": 310,
+    "y": 940,
+    "wires": [
+      [
+        "fbd3a3f5.1c94c"
+      ]
+    ]
+  },
+  {
+    "id": "536255a1.b0a6bc",
+    "type": "ui_link",
+    "z": "d379d8ae.5f34e8",
+    "name": "Freifunk Münster",
+    "link": "http://freifunk-muensterland.de",
+    "icon": "open_in_browser",
+    "target": "newtab",
+    "order": 1,
+    "x": 741,
+    "y": 980,
+    "wires": []
+  },
+  {
+    "id": "feb0ae01.a33a2",
+    "type": "ui_link",
+    "z": "d379d8ae.5f34e8",
+    "name": "Warpzone",
+    "link": "http://warpzone.ms",
+    "icon": "open_in_browser",
+    "target": "newtab",
+    "order": 1,
+    "x": 900,
+    "y": 980,
+    "wires": []
+  },
+  {
+    "id": "7b7c58fe.0d4f18",
+    "type": "inject",
+    "z": "d379d8ae.5f34e8",
+    "name": "initCC",
+    "topic": "",
+    "payload": "0",
+    "payloadType": "num",
+    "repeat": "",
+    "crontab": "",
+    "once": true,
+    "x": 730,
+    "y": 1040,
+    "wires": [
+      [
+        "bddf3452.90f2b8"
+      ]
+    ]
+  },
+  {
+    "id": "bddf3452.90f2b8",
+    "type": "globalGetSet",
+    "z": "d379d8ae.5f34e8",
+    "name": "Init CC",
+    "topic": "",
+    "context": "msg",
+    "variable": "payload",
+    "outContext": "global",
+    "outVar": "currCC",
+    "x": 890,
+    "y": 1040,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "e6e834cc.4d51a8",
+    "type": "globalGetSet",
+    "z": "d379d8ae.5f34e8",
+    "name": "Init ts",
+    "topic": "",
+    "context": "msg",
+    "variable": "payload",
+    "outContext": "global",
+    "outVar": "currentTS",
+    "x": 890,
+    "y": 1080,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "e4afe377.fc7e1",
+    "type": "inject",
+    "z": "d379d8ae.5f34e8",
+    "name": "init TS",
+    "topic": "",
+    "payload": "0",
+    "payloadType": "num",
+    "repeat": "",
+    "crontab": "",
+    "once": true,
+    "x": 730,
+    "y": 1080,
+    "wires": [
+      [
+        "e6e834cc.4d51a8"
+      ]
+    ]
+  },
+  {
+    "id": "61fdbd00.273e14",
+    "type": "change",
+    "z": "d379d8ae.5f34e8",
+    "name": "request param",
+    "rules": [
+      {
+        "t": "set",
+        "p": "headers",
+        "pt": "msg",
+        "to": "{ \"Content-Type\" : \"application/json\", \"Host\": \"www.opensensemap.org\"}",
+        "tot": "json"
+      },
+      {
+        "t": "set",
+        "p": "url",
+        "pt": "msg",
+        "to": "http://www.opensensemap.org:8000/boxes/5767cdbb4774ce7c0cac561e/5767cdbb4774ce7c0cac5620",
+        "tot": "str"
+      },
+      {
+        "t": "set",
+        "p": "method",
+        "pt": "msg",
+        "to": "POST",
+        "tot": "str"
+      }
+    ],
+    "action": "",
+    "property": "",
+    "from": "",
+    "to": "",
+    "reg": false,
+    "x": 640,
+    "y": 840,
+    "wires": [
+      [
+        "956fd30a.38371"
+      ]
+    ]
+  },
+  {
+    "id": "fea1fef4.ae5c1",
+    "type": "template",
+    "z": "d379d8ae.5f34e8",
+    "name": "value json",
+    "field": "payload",
+    "fieldType": "msg",
+    "format": "handlebars",
+    "syntax": "mustache",
+    "template": "{ \"value\": {{payload}} }",
+    "x": 460,
+    "y": 840,
+    "wires": [
+      [
+        "61fdbd00.273e14"
+      ]
+    ]
+  },
+  {
+    "id": "956fd30a.38371",
+    "type": "http request",
+    "z": "d379d8ae.5f34e8",
+    "name": "Update OpenSenseMap",
+    "method": "use",
+    "ret": "txt",
+    "url": "",
+    "x": 870,
+    "y": 840,
+    "wires": [
+      [
+        "a90679ae.ecea38"
+      ]
+    ]
+  },
+  {
+    "id": "67de15ea.3c968c",
+    "type": "function",
+    "z": "d379d8ae.5f34e8",
+    "name": "decodeMessage",
+    "func": "var b64string =  msg.payload.payload;\nvar buf = new Buffer(b64string, 'base64');\n\nnode.log(buf.length);\n\nvar temperature=buf.readUInt16BE(0)/10;\nvar ccCount= buf.readInt32LE(2);\nvar currentAvgConsumption = buf.readInt16LE(6)/1000.0;\n\nvar chargeTotal = Math.round(ccCount*0.1707*100)/100.0;\nvar ts_x = new Date(msg.payload.metadata[0].gateway_time);\nvar ts = ts_x.toLocaleTimeString();\n\nvar newMsg = { \"payload\": temperature,\n               \"temperature\": temperature,\n               \"timestamp\": ts,\n               \"timestamp_m\": ts_x.getTime(),\n               \"timestamp_e\": ts_x.toISOString(),\n               \"coloumbCount\": ccCount,\n               \"mAhTotal\": chargeTotal,\n               \"topic\": \"temperature\",\n               \"sensor\": \"dek1\"\n};\nreturn newMsg;",
+    "outputs": "1",
+    "noerr": 0,
+    "x": 150,
+    "y": 300,
+    "wires": [
+      [
+        "fea1fef4.ae5c1",
+        "dc885be1.3be6b8",
+        "d8c89234.56067",
+        "c69cd73e.c1fa58",
+        "e69ffd75.1fa29",
+        "d6f9a0ba.49d13",
+        "25e701d4.f6037e",
+        "718d683f.07b188",
+        "877eb57d.c96d38",
+        "872d5edc.35fc6",
+        "e8f1a00c.6968d",
+        "b1b93ab9.a95638",
+        "174c1405.e9facc"
+      ]
+    ]
+  },
+  {
+    "id": "cf4d1c39.1b83d",
+    "type": "inject",
+    "z": "d379d8ae.5f34e8",
+    "name": "value 1",
+    "topic": "",
+    "payload": "17",
+    "payloadType": "num",
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "x": 310,
+    "y": 800,
+    "wires": [
+      [
+        "fea1fef4.ae5c1"
+      ]
+    ]
+  },
+  {
+    "id": "a90679ae.ecea38",
+    "type": "debug",
+    "z": "d379d8ae.5f34e8",
+    "name": "",
+    "active": false,
+    "console": "false",
+    "complete": "true",
+    "x": 1070,
+    "y": 840,
+    "wires": []
+  },
+  {
+    "id": "edef5421.f70848",
+    "type": "function",
+    "z": "d379d8ae.5f34e8",
+    "name": "buildChargeMessage",
+    "func": "var newMsg = { payload: msg.mAhTotal,\n               topic: \"SOC\",\n               current: msg.mACurrent};\n             \nreturn newMsg;\n",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 600,
+    "y": 400,
+    "wires": [
+      [
+        "57451bb5.23e954"
+      ]
+    ]
+  },
+  {
+    "id": "dc885be1.3be6b8",
+    "type": "debug",
+    "z": "d379d8ae.5f34e8",
+    "name": "log msg",
+    "active": true,
+    "console": "true",
+    "complete": "true",
+    "x": 420,
+    "y": 180,
+    "wires": []
+  },
+  {
+    "id": "d8c89234.56067",
+    "type": "delay",
+    "z": "d379d8ae.5f34e8",
+    "name": "einmal am Tag",
+    "pauseType": "rate",
+    "timeout": "5",
+    "timeoutUnits": "seconds",
+    "rate": "1",
+    "rateUnits": "day",
+    "randomFirst": "1",
+    "randomLast": "5",
+    "randomUnits": "seconds",
+    "drop": true,
+    "x": 480,
+    "y": 480,
+    "wires": [
+      [
+        "a323f7d5.3255b8",
+        "6ad48021.a6ad1",
+        "38cd23bf.315efc"
+      ]
+    ]
+  },
+  {
+    "id": "c69cd73e.c1fa58",
+    "type": "dweetio out",
+    "z": "d379d8ae.5f34e8",
+    "thing": "de.freifunk-muensterland.ttn.dek1",
+    "name": "Dweet de.freifunk-muensterland.ttn.kanalratte",
+    "x": 580,
+    "y": 760,
+    "wires": []
+  },
+  {
+    "id": "e69ffd75.1fa29",
+    "type": "subflow:5e2695ff.75a17c",
+    "z": "d379d8ae.5f34e8",
+    "name": "",
+    "x": 490,
+    "y": 700,
+    "wires": [
+      [
+        "bd67a83c.1f0688",
+        "48239c99.861134"
+      ]
+    ]
+  },
+  {
+    "id": "c4485165.1f361",
+    "type": "json",
+    "z": "d379d8ae.5f34e8",
+    "name": "parseJSON",
+    "x": 130.0714111328125,
+    "y": 142,
+    "wires": [
+      [
+        "67de15ea.3c968c",
+        "3c78c42a.00397c"
+      ]
+    ]
+  },
+  {
+    "id": "57451bb5.23e954",
+    "type": "ui_chart",
+    "z": "d379d8ae.5f34e8",
+    "tab": "12a1121.7e274ee",
+    "group": "1340fcde.d07283",
+    "order": "2",
+    "width": "",
+    "height": "",
+    "label": "Bilanz [mAh]",
+    "name": "SOC",
+    "interpolate": "basis",
+    "nodata": "Keine Daten",
+    "ymin": "",
+    "ymax": "",
+    "removeOlder": 1,
+    "removeOlderUnit": "604800",
+    "x": 790,
+    "y": 400,
+    "wires": [
+      [],
+      []
+    ]
+  },
+  {
+    "id": "a323f7d5.3255b8",
+    "type": "switch",
+    "z": "d379d8ae.5f34e8",
+    "name": "Kälter/Wärmer",
+    "property": "payload",
+    "propertyType": "msg",
+    "rules": [
+      {
+        "t": "gt",
+        "v": "yesterdayTemp",
+        "vt": "global"
+      },
+      {
+        "t": "lt",
+        "v": "yesterdayTemp",
+        "vt": "global"
+      }
+    ],
+    "checkall": "false",
+    "outputs": 2,
+    "x": 700,
+    "y": 540,
+    "wires": [
+      [
+        "6ad48021.a6ad1"
+      ],
+      [
+        "5b03bb31.a21d14"
+      ]
+    ]
+  },
+  {
+    "id": "6ad48021.a6ad1",
+    "type": "template",
+    "z": "d379d8ae.5f34e8",
+    "name": "\"Gerade so\"  /wärmer",
+    "field": "payload",
+    "fieldType": "msg",
+    "format": "handlebars",
+    "syntax": "mustache",
+    "template": "Gerade so {{payload}}℃ #beta #freifunklp",
+    "x": 920,
+    "y": 500,
+    "wires": [
+      [
+        "fea14ede.a4f88"
+      ]
+    ]
+  },
+  {
+    "id": "bd67a83c.1f0688",
+    "type": "ui_text",
+    "z": "d379d8ae.5f34e8",
+    "tab": "12a1121.7e274ee",
+    "group": "1340fcde.d07283",
+    "order": "2",
+    "width": "5",
+    "height": 1,
+    "name": "",
+    "label": "Lade/Entladestrom [mA]",
+    "format": "{{msg.payload | number:2}}",
+    "x": 750,
+    "y": 700,
+    "wires": []
+  },
+  {
+    "id": "e04ce844.51fd88",
+    "type": "mqtt in",
+    "z": "d379d8ae.5f34e8",
+    "name": "staging.thethingsnetwork / map3 q",
+    "topic": "+/devices/#",
+    "broker": "83e6a0b.5bb186",
+    "x": 167.85713958740234,
+    "y": 49.42856979370117,
+    "wires": [
+      [
+        "c4485165.1f361"
+      ]
+    ]
+  },
+  {
+    "id": "a2f14933.915da8",
+    "type": "inject",
+    "z": "d379d8ae.5f34e8",
+    "name": "Test Twitter 21",
+    "topic": "",
+    "payload": "21",
+    "payloadType": "num",
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "x": 490,
+    "y": 560,
+    "wires": [
+      [
+        "a323f7d5.3255b8"
+      ]
+    ]
+  },
+  {
+    "id": "dd0b8602.40eae8",
+    "type": "twitter out",
+    "z": "d379d8ae.5f34e8",
+    "twitter": "",
+    "name": "Tweet DortmundEms",
+    "x": 1200,
+    "y": 520,
+    "wires": []
+  },
+  {
+    "id": "fea14ede.a4f88",
+    "type": "debug",
+    "z": "d379d8ae.5f34e8",
+    "name": "",
+    "active": false,
+    "console": "false",
+    "complete": "true",
+    "x": 1150,
+    "y": 460,
+    "wires": []
+  },
+  {
+    "id": "d6f9a0ba.49d13",
+    "type": "ui_text",
+    "z": "d379d8ae.5f34e8",
+    "tab": "12a1121.7e274ee",
+    "group": "c07abb24.5c0158",
+    "order": "3",
+    "width": "5",
+    "height": 1,
+    "name": "Temp Text",
+    "label": "Temperatur [℃]",
+    "format": "{{msg.payload}}",
+    "x": 550,
+    "y": 260,
+    "wires": []
+  },
+  {
+    "id": "25e701d4.f6037e",
+    "type": "ui_text",
+    "z": "d379d8ae.5f34e8",
+    "tab": "12a1121.7e274ee",
+    "group": "c07abb24.5c0158",
+    "order": "3",
+    "width": "5",
+    "height": 1,
+    "name": "Timestamp",
+    "label": "Aktualisiert: ",
+    "format": "{{msg.timestamp}}",
+    "x": 550,
+    "y": 300,
+    "wires": []
+  },
+  {
+    "id": "718d683f.07b188",
+    "type": "ui_text",
+    "z": "d379d8ae.5f34e8",
+    "tab": "12a1121.7e274ee",
+    "group": "1340fcde.d07283",
+    "order": "3",
+    "width": "5",
+    "height": 1,
+    "name": "",
+    "label": "Coloumb Zähler Ticks",
+    "format": "{{msg.coloumbCount}}",
+    "x": 760,
+    "y": 300,
+    "wires": []
+  },
+  {
+    "id": "877eb57d.c96d38",
+    "type": "ui_text",
+    "z": "d379d8ae.5f34e8",
+    "tab": "12a1121.7e274ee",
+    "group": "1340fcde.d07283",
+    "order": "3",
+    "width": "5",
+    "height": 1,
+    "name": "",
+    "label": "Bilanz [mAh]",
+    "format": "{{msg.mAhTotal | number:2}} ",
+    "x": 730,
+    "y": 260,
+    "wires": []
+  },
+  {
+    "id": "c797b4a1.051138",
+    "type": "ui_chart",
+    "z": "d379d8ae.5f34e8",
+    "tab": "12a1121.7e274ee",
+    "group": "c07abb24.5c0158",
+    "order": "2",
+    "width": "",
+    "height": "",
+    "label": "",
+    "name": "Temp",
+    "interpolate": "basis",
+    "nodata": "Keine Daten",
+    "ymin": "",
+    "ymax": "30",
+    "removeOlder": "1",
+    "removeOlderUnit": "604800",
+    "x": 550,
+    "y": 340,
+    "wires": [
+      [
+        "92f5f85b.2f1c28"
+      ],
+      []
+    ]
+  },
+  {
+    "id": "92f5f85b.2f1c28",
+    "type": "file",
+    "z": "d379d8ae.5f34e8",
+    "name": "",
+    "filename": "/home/dash/chartstate2",
+    "appendNewline": true,
+    "createDir": false,
+    "overwriteFile": "true",
+    "x": 770,
+    "y": 340,
+    "wires": []
+  },
+  {
+    "id": "38cd23bf.315efc",
+    "type": "delay",
+    "z": "d379d8ae.5f34e8",
+    "name": "",
+    "pauseType": "delay",
+    "timeout": "24",
+    "timeoutUnits": "hours",
+    "rate": "1",
+    "rateUnits": "second",
+    "randomFirst": "1",
+    "randomLast": "5",
+    "randomUnits": "seconds",
+    "drop": false,
+    "x": 670,
+    "y": 600,
+    "wires": [
+      [
+        "6abe644e.86213c"
+      ]
+    ]
+  },
+  {
+    "id": "6abe644e.86213c",
+    "type": "globalGetSet",
+    "z": "d379d8ae.5f34e8",
+    "name": "set yesterdayTemp",
+    "topic": "",
+    "context": "msg",
+    "variable": "payload",
+    "outContext": "global",
+    "outVar": "yesterdayTemp",
+    "x": 850,
+    "y": 600,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "e432db65.361568",
+    "type": "inject",
+    "z": "d379d8ae.5f34e8",
+    "name": "init Temp Vortag",
+    "topic": "",
+    "payload": "0",
+    "payloadType": "num",
+    "repeat": "",
+    "crontab": "",
+    "once": true,
+    "x": 700,
+    "y": 1120,
+    "wires": [
+      [
+        "d7065271.c7db7"
+      ]
+    ]
+  },
+  {
+    "id": "d7065271.c7db7",
+    "type": "globalGetSet",
+    "z": "d379d8ae.5f34e8",
+    "name": "Init ts",
+    "topic": "",
+    "context": "msg",
+    "variable": "payload",
+    "outContext": "global",
+    "outVar": "currentTS",
+    "x": 890,
+    "y": 1120,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "5b03bb31.a21d14",
+    "type": "template",
+    "z": "d379d8ae.5f34e8",
+    "name": "\"Gerade so\"  /kälter",
+    "field": "payload",
+    "fieldType": "msg",
+    "format": "handlebars",
+    "syntax": "mustache",
+    "template": "Gerade so {{payload}}℃ #beta #freifunklp",
+    "x": 910,
+    "y": 540,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "48239c99.861134",
+    "type": "ui_text",
+    "z": "d379d8ae.5f34e8",
+    "tab": "12a1121.7e274ee",
+    "group": "1340fcde.d07283",
+    "order": "3",
+    "width": "4",
+    "height": 1,
+    "name": "",
+    "label": "Aktualisiert nach [s]",
+    "format": "{{msg.updateRt | number :1}}",
+    "x": 940,
+    "y": 760,
+    "wires": []
+  },
+  {
+    "id": "872d5edc.35fc6",
+    "type": "ui_template",
+    "z": "d379d8ae.5f34e8",
+    "tab": "12a1121.7e274ee",
+    "group": "c07abb24.5c0158",
+    "name": "Intro",
+    "order": 1,
+    "width": "10",
+    "height": "",
+    "format": "<p>\n    Die Wassertemperatur des Dortmund-Ems Kanal beträgt aktuell {{msg.payload}} ℃.\n</p>\n  <p>\n    Gemessen <a href=\"http://m.osmtools.de/index.php?lon=7.644261&lat=51.94449&zoom=13&mlon=7.64306&mlat=51.946051&icon=4\">in Münster im Stadthafen2</a> auf 1m Wassertiefe. \n </p> \n",
+    "storeOutMessages": true,
+    "fwdInMessages": true,
+    "x": 570,
+    "y": 220,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "e8f1a00c.6968d",
+    "type": "delay",
+    "z": "d379d8ae.5f34e8",
+    "name": "",
+    "pauseType": "rate",
+    "timeout": "5",
+    "timeoutUnits": "seconds",
+    "rate": "5",
+    "rateUnits": "hour",
+    "randomFirst": "1",
+    "randomLast": "5",
+    "randomUnits": "seconds",
+    "drop": true,
+    "x": 390,
+    "y": 360,
+    "wires": [
+      [
+        "c797b4a1.051138",
+        "edef5421.f70848"
+      ]
+    ]
+  },
+  {
+    "id": "b1b93ab9.a95638",
+    "type": "file",
+    "z": "d379d8ae.5f34e8",
+    "name": "",
+    "filename": "/home/dash/tempraw",
+    "appendNewline": true,
+    "createDir": false,
+    "overwriteFile": "false",
+    "x": 360,
+    "y": 880,
+    "wires": []
+  },
+  {
+    "id": "3483c32e.457f2c",
+    "type": "ui_template",
+    "z": "d379d8ae.5f34e8",
+    "tab": "12a1121.7e274ee",
+    "group": "6f5dfabc.2bd484",
+    "name": "Über FreifunkLP",
+    "order": "3",
+    "width": "10",
+    "height": "4",
+    "format": "<p>Dieser Sensor ist Teil des FreifunkLP Netzes in Münster.</p>\n<div>FreifunkLP ist ein Netzwerk für Sensoren - mit hoher Reichweite und sehr geringem Stromverbrauch. </div>\n<p> Das Netz kann von allen Menschen frei benutzt werden.</p> \n \n<p>FreifunkLP ist ein Projekt von <a href=\"https://freifunk-muensterland.de/\">Freifunk Münster</a>. \n FreifunkLP beruht auf <a href=\"https://de.wikipedia.org/wiki/Long_Range_Wide_Area_Network\">LoRaWAN</a> und ist Teil der <a href=\"https://thethingsnetwork.org/\">The Things Network</a> Initative. \n</p>",
+    "storeOutMessages": true,
+    "fwdInMessages": true,
+    "x": 740,
+    "y": 220,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "69ab847d.a3b2bc",
+    "type": "http request",
+    "z": "d379d8ae.5f34e8",
+    "name": "post to elasticsearch",
+    "method": "POST",
+    "ret": "txt",
+    "url": "http://localhost:9200/flpsens/dek1/",
+    "x": 720,
+    "y": 140,
+    "wires": [
+      [
+        "94fbd38f.30512"
+      ]
+    ]
+  },
+  {
+    "id": "174c1405.e9facc",
+    "type": "function",
+    "z": "d379d8ae.5f34e8",
+    "name": "make elasticsearch body",
+    "func": "return { \"payload\": msg\n};",
+    "outputs": 1,
+    "noerr": 0,
+    "x": 470,
+    "y": 140,
+    "wires": [
+      [
+        "69ab847d.a3b2bc"
+      ]
+    ]
+  },
+  {
+    "id": "94fbd38f.30512",
+    "type": "debug",
+    "z": "d379d8ae.5f34e8",
+    "name": "",
+    "active": false,
+    "console": "true",
+    "complete": "true",
+    "x": 890,
+    "y": 140,
+    "wires": []
+  },
+  {
+    "id": "12a22f2c.de8ac1",
+    "type": "ui_template",
+    "z": "d379d8ae.5f34e8",
+    "tab": "12a1121.7e274ee",
+    "group": "1340fcde.d07283",
+    "name": "Intro Energiebilanz",
+    "order": 1,
+    "width": "10",
+    "height": "2",
+    "format": "<p>Dieser Sensor arbeitet mit der Kraft der Sonne und meldet die Ladung/Entladung seiner Batterie.</p>\n",
+    "storeOutMessages": true,
+    "fwdInMessages": true,
+    "x": 830,
+    "y": 440,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "4c25d1d7.48cc6",
+    "type": "ui_template",
+    "z": "d379d8ae.5f34e8",
+    "tab": "12a1121.7e274ee",
+    "group": "1340fcde.d07283",
+    "name": "Details Sensor",
+    "order": "5",
+    "width": "",
+    "height": "",
+    "format": "<p>Unter anderem möchten wir herausfinden ob ein solcher Sensor dauerhaft (auch im Winter) so betreiben werden kann.</p>\n<p>Details zu dem Aufbau des Sensors finden sich __hier__</p>\n",
+    "storeOutMessages": true,
+    "fwdInMessages": true,
+    "x": 960,
+    "y": 400,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "3c78c42a.00397c",
+    "type": "debug",
+    "z": "d379d8ae.5f34e8",
+    "name": "",
+    "active": false,
+    "console": "false",
+    "complete": "true",
+    "x": 280,
+    "y": 120,
+    "wires": []
+  }
+]
