@@ -6,6 +6,9 @@
 #include <math.h>
 #include <SPI.h>
 
+//we're going to switch to msgpack
+//https://github.com/HEADS-project/arduino_msgpack
+
 RTCZero rtc;
 
 //#define DEBUG
