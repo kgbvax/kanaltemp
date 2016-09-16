@@ -421,6 +421,39 @@ void Sodaq_RN2483::sleep(uint32_t msec) {
     //does NOT await OK
 }
 
+boolean Sodaq_RN2483::configChFreq(int channel, long freq, int drmin, int drmax, int dcyclePercent) {
+   this->loraStream->print("mac set ch freq ");
+   this->loraStream->print(channel);
+   this->loraStream->print(" ");
+   this->loraStream->print(freq);
+   this->loraStream->print(CRLF);
+   if (!expectOK()) return false;
+
+   this->loraStream->print("mac set ch drrange ");
+   this->loraStream->print(channel);
+   this->loraStream->print(" ");
+   this->loraStream->print(drmin);
+   this->loraStream->print(" ");
+   this->loraStream->print(drmax);
+   this->loraStream->print(CRLF);
+   if (!expectOK()) return false;
+
+   this->loraStream->print("mac set ch dcycle ");
+   this->loraStream->print(channel);
+   this->loraStream->print(" ");
+   int dcyleVal=round((100.0/(float)dcyclePercent)-1);
+   this->loraStream->print(dcyleVal);
+   this->loraStream->print(CRLF);
+   if (!expectOK()) return false;
+
+   this->loraStream->print("mac set ch status ");
+   this->loraStream->print(channel);
+   this->loraStream->print(" on");
+   this->loraStream->print(CRLF);
+   return expectOK();
+
+}
+
 boolean Sodaq_RN2483::setSf(uint8_t sf) {
   debugPrintLn("[setSf] ");
   this->loraStream->print(STR_CMD_RADIO_SET);

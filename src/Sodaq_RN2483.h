@@ -100,6 +100,9 @@ public:
     // set tx power. Valid range is -3 ... 14
     boolean setTxPwr(int8_t txpwr);
 
+    //config channel / freq
+    boolean configChFreq(int channel, long freq,int drmin, int drmax, int dcyclePercent);
+
     // Sends the given payload without acknowledgement.
     // Returns 0 (NoError) when transmission is successful or one of the MacTransmitErrorCodes otherwise.
     uint8_t send(uint8_t port, const uint8_t* payload, uint8_t size);

@@ -1,3 +1,5 @@
+
+
 /**
    wiekaltistderkanal.de sensor  V2
 
@@ -11,29 +13,29 @@
     GNU General Public License for more details.
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 */
 
+/* Note: This uses a modfied version of sodaq's RN2483 lib */
 
-#include <Arduino.h>
 #include <RTCZero.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <math.h>
 #include <SPI.h>
-
+#include <Wire.h>
+#include "Adafruit_BME280.h"
 #include "Sodaq_RN2483.h"
 
 #define DEBUG 1
+//#undef DEBUG
 #define ENABLE_SLEEP 1
 #define HAS_CC 1
 
 //constants for reading battery voltage
 #define BATVOLTPIN  BAT_VOLT
-static const double ADC_AREF=3.3;
-static const double BATVOLT_R1=4.7;
-static const double BATVOLT_R2=10;
-
+static const double ADC_AREF = 3.3;
+static const double BATVOLT_R1 = 4.7;
+static const double BATVOLT_R2 = 10;
 
 //IO port definitions
 #define debugSerial SerialUSB
@@ -49,16 +51,14 @@ static const double BATVOLT_R2=10;
 #define ONE_WIRE_BUS_CASE  7
 
 
-
 //used for scaling float into uint16
-//tick = 0.000534 
+//tick = 0.000534
 static const double water_min_temp = -5.0;
 static const double water_max_temp = 30;
 
 //tick = 0.000092
 static const double battery_min_volt = 0.0;
 static const double battery_max_volt = 6.0;
-
 
 //tick = 0.002747
 static const double case_min_temp = -30;
@@ -67,7 +67,7 @@ static const double case_max_temp = 150; //on fire!
 
 RTCZero rtc;
 
-static int theUpdateRate = 90;
+static int theUpdateRate = 7 * 60;
 const static uint16_t recv_buffer_sz = 32;
 
 #ifdef DEBUG
@@ -110,10 +110,12 @@ const uint8_t appSKey[16] = { 0x99, 0xA7, 0x70, 0x45, 0x9B, 0xCC, 0xE5, 0x58, 0x
 
 /* TTN app name: kanaltemp_v2 */
 
+Adafruit_BME280 bme; // I2C
+
 
 void setup()
 {
-  delay(3142*2);
+  delay(3142 * 2);
 
 #ifdef DEBUG
   debugSerial.begin(57600);
@@ -139,10 +141,20 @@ void setup()
 #endif
 
   loraSerial.begin(LoRaBee.getDefaultBaudRate());
-
+ 
   bool connected = LoRaBee.initABP(loraSerial, devAddr, appSKey, nwkSKey, true);
-  LoRaBee.setSf(8);
-  LoRaBee.setTxPwr(12);
+  // LoRaBee.setSf(8);
+  // LoRaBee.setTxPwr(12);
+
+  //TTN channel plan. 
+  LoRaBee.configChFreq(0, 868100000L,0,5,1);
+  LoRaBee.configChFreq(1, 868300000L,0,5,1); 
+  LoRaBee.configChFreq(2, 868500000L,0,5,1);
+  LoRaBee.configChFreq(3, 867100000L,0,5,1);
+  LoRaBee.configChFreq(4, 867300000L,0,5,1);
+  LoRaBee.configChFreq(5, 867500000L,0,5,1);
+  LoRaBee.configChFreq(6, 867700000L,0,5,1);
+  LoRaBee.configChFreq(7, 867900000L,0,5,1);
 
   if (connected == true) {
     DEB("Connection to the network was successful.");
@@ -156,6 +168,7 @@ void setup()
   SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk; /* Enable deepsleep */
 #endif
 
+  bme.begin();
 }
 
 void alarmMatch()
@@ -257,7 +270,7 @@ float readTemp(int oneWireBusPin) {
 
 void loop()
 {
-  uint16_t transmitTemp1, transmitTemp2,caseTemp;
+  uint16_t transmitTemp1, transmitTemp2, caseTemp;
   //power up switch GROVE rail
   pinMode(VCC_SW, OUTPUT);
   digitalWrite(VCC_SW, HIGH);
@@ -265,16 +278,40 @@ void loop()
 
   // default (and max) resolution of sensor is 12 bit / 0.0625°C
   // beware: absolute accuracy is ±0.5°C  from -10°C to +85°C for the uncalibrated DS18b20
-  transmitTemp1 = fitUInt16(readTemp(ONE_WIRE_BUS), water_min_temp, water_max_temp); //  lower sensor
-  transmitTemp2 = fitUInt16(readTemp(ONE_WIRE_BUS_B), water_min_temp, water_max_temp); // upper sensor
-  float caseTempF = readTemp(ONE_WIRE_BUS_CASE);
-  caseTemp = fitUInt16(caseTempF, case_min_temp, case_max_temp); // case (battery) temp
+  float temp1 = readTemp(ONE_WIRE_BUS);
+  transmitTemp1 = fitUInt16(temp1, water_min_temp, water_max_temp); //  lower sensor
+  float temp2 = readTemp(ONE_WIRE_BUS_B);
+  transmitTemp2 = fitUInt16(temp2, water_min_temp, water_max_temp); // upper sensor
+  caseTemp = fitUInt16(readTemp(ONE_WIRE_BUS_CASE), case_min_temp, case_max_temp); // case (battery) temp
 
-  DEB("case");
-  DEB(caseTempF);
-  
+
   digitalWrite(VCC_SW, LOW); //power down GROVE rail
+
+  DEB("temps")
+  DEB(temp1);
+  DEB(temp2);
+
   resetPin(VCC_SW); //conserve 1 uA?
+  resetPin(ONE_WIRE_BUS);
+  resetPin(ONE_WIRE_BUS_B);
+  resetPin(ONE_WIRE_BUS_CASE);
+
+  //now get TPH data
+  uint16_t pressureHPa;
+  uint16_t humidity;
+  {
+
+   
+
+    pressureHPa = round(bme.readPressure() / 100.0F*10.0);
+    DEB("pressure");
+    DEB(pressureHPa);
+
+    humidity = round(bme.readHumidity() * 10.0);
+    DEB("humidity*10");
+    DEB(humidity);
+   
+  }
 
   // calculate power avg power consumption
   if ( numTicks > 0) {
@@ -293,17 +330,19 @@ void loop()
   }
 
   DEB("battery");
-  float vbatt = getRealBatteryVoltageMV()/1000.0;
+  float vbatt = getRealBatteryVoltageMV() / 1000.0;
   DEB(vbatt);
   uint16_t vbattui = fitUInt16(vbatt, battery_min_volt, battery_max_volt);
 
-  uint8_t payload[14];
+  uint8_t payload[18];
   // 2  temp (lower sensor) (scaled -5 .. 30)
   // 2  temp (upper sensor) (scaled -5 .. 30)
   // 4  Columb Counter sum
   // 2  consumption  (1000*mA)
   // 2  batt voltage (scaled 0..5)
   // 2  case temp (scaled case_min_temp .. case_max_temp // -30 ...150)
+  // 2  humidity *10
+  // 2  pressure in HPa *10
   payload[0] = (uint8_t) (transmitTemp1 >> 8);
   payload[1] = (uint8_t)  0xff & transmitTemp1;
 
@@ -318,7 +357,13 @@ void loop()
   payload[11] = (uint8_t) (vbattui & 0xff);
   payload[12] = (uint8_t) (caseTemp >> 8);
   payload[13] = (uint8_t) (caseTemp & 0xff);
-  
+
+  payload[14] = (uint8_t) (humidity >> 8);
+  payload[15] = (uint8_t) (humidity & 0xff);
+
+  payload[16] = (uint8_t) (pressureHPa >> 8);
+  payload[17] = (uint8_t) (pressureHPa & 0xff);
+
 
   DEB("coulomb ticks=");
   DEB(ccsum);
