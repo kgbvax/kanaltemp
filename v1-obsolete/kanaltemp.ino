@@ -1,3 +1,5 @@
+/* OBSOLETE: This was the code for the stolen wiekaltistderkanal.de sensor version 1 */
+
 #include <Arduino.h>
 #include <RTCZero.h>
 #include <Sodaq_RN2483.h>
@@ -5,6 +7,9 @@
 #include <DallasTemperature.h>
 #include <math.h>
 #include <SPI.h>
+
+//we're going to switch to msgpack
+//https://github.com/HEADS-project/arduino_msgpack
 
 RTCZero rtc;
 
