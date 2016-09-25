@@ -22,6 +22,7 @@
 #include "StringLiterals.h"
 #include "Utils.h"
 
+
 #ifdef DEBUG
 #define debugPrintLn(...) { if (this->diagStream) this->diagStream->println(__VA_ARGS__); }
 #define debugPrint(...) { if (this->diagStream) this->diagStream->print(__VA_ARGS__); }
@@ -454,19 +455,19 @@ boolean Sodaq_RN2483::configChFreq(int channel, long freq, int drmin, int drmax,
 
 }
 
-boolean Sodaq_RN2483::setSf(uint8_t sf) {
+boolean Sodaq_RN2483::setSf(const char* sf) {
   debugPrintLn("[setSf] ");
   this->loraStream->print(STR_CMD_RADIO_SET);
-  this->loraStream->print("sf sf");
+  this->loraStream->print("sf ");
   this->loraStream->print(sf);
   this->loraStream->print(CRLF);
   return expectOK();
 }
 
-boolean Sodaq_RN2483::setTxPwr(int8_t txPwr) {
+boolean Sodaq_RN2483::setTxPwr(const char *txPwr) {
   debugPrintLn("[setTxPwr ] ");
   this->loraStream->print(STR_CMD_RADIO_SET);
-  this->loraStream->print("pwr ");
+  this->loraStream->print(" pwr ");
   this->loraStream->print(txPwr);
   this->loraStream->print(CRLF);
   return expectOK();

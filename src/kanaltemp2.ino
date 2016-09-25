@@ -16,7 +16,7 @@
 */
 
 /* Note: This uses a modfied version of sodaq's RN2483 lib */
-
+ #include <Arduino.h>
 #include <RTCZero.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
@@ -25,11 +25,19 @@
 #include <Wire.h>
 #include "Adafruit_BME280.h"
 #include "Sodaq_RN2483.h"
+//#include "Sodaq_wdt.h"
 
-#define DEBUG 1
-//#undef DEBUG
+//#define DEBUG 1
+#undef DEBUG
 #define ENABLE_SLEEP 1
 #define HAS_CC 1
+#undef USE_WDT
+
+#ifdef USE_WDT
+#define DELAY(x) sodaq_wdt_safe_delay(x)
+#else
+#define DELAY(x) delay(x)
+#endif
 
 //constants for reading battery voltage
 #define BATVOLTPIN  BAT_VOLT
@@ -67,7 +75,7 @@ static const double case_max_temp = 150; //on fire!
 
 RTCZero rtc;
 
-static int theUpdateRate = 7 * 60;
+static int theUpdateRate = 20 * 60;
 const static uint16_t recv_buffer_sz = 32;
 
 #ifdef DEBUG
@@ -143,8 +151,9 @@ void setup()
   loraSerial.begin(LoRaBee.getDefaultBaudRate());
  
   bool connected = LoRaBee.initABP(loraSerial, devAddr, appSKey, nwkSKey, true);
-  // LoRaBee.setSf(8);
-  // LoRaBee.setTxPwr(12);
+  //LoRaBee.setSf("sf9");
+ // LoRaBee.setTxPwr("14"); 
+  
 
   //TTN channel plan. 
   LoRaBee.configChFreq(0, 868100000L,0,5,1);
@@ -169,12 +178,15 @@ void setup()
 #endif
 
   bme.begin();
+#ifdef USE_WDT  
+  sodaq_wdt_enable(WDT_PERIOD_8X);
+#endif
+ 
 }
 
 void alarmMatch()
 {
   intAlarm = true;
-  // DEB("alarm");
 }
 
 /* put the RN2483 and the board to sleep
@@ -186,7 +198,7 @@ void lowPowerSleep(uint16_t sec) {
     sec = 1;
 
   uint32_t beesleep = 1000L * sec - 500L;
-  LoRaBee.sleep(beesleep); //have the LoRa Module wake up 500msec  early */
+  LoRaBee.sleep(beesleep); //have the LoRa Module wake up 500msec  early  
 
   rtc.setTime(0, 0, 0);
   int w_min = sec / 60;
@@ -274,7 +286,7 @@ void loop()
   //power up switch GROVE rail
   pinMode(VCC_SW, OUTPUT);
   digitalWrite(VCC_SW, HIGH);
-  delay(50);
+  DELAY(50);
 
   // default (and max) resolution of sensor is 12 bit / 0.0625°C
   // beware: absolute accuracy is ±0.5°C  from -10°C to +85°C for the uncalibrated DS18b20

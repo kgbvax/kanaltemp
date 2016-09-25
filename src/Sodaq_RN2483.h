@@ -17,7 +17,6 @@
 * License along with Sodaq_RN2483.  If not, see
 * <http://www.gnu.org/licenses/>.
 */
-
 #ifndef _Sodaq_RN2483_h
 #define _Sodaq_RN2483_h
 
@@ -95,10 +94,10 @@ public:
     void sleep(uint32_t msec);
 
     // set the spreadfactor. Valid range is 7..12
-    boolean setSf(uint8_t sf);
+    boolean setSf(const char* sf);
 
     // set tx power. Valid range is -3 ... 14
-    boolean setTxPwr(int8_t txpwr);
+    boolean setTxPwr(const char* txpwr);
 
     //config channel / freq
     boolean configChFreq(int channel, long freq,int drmin, int drmax, int dcyclePercent);
