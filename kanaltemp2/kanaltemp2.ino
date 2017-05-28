@@ -27,11 +27,14 @@
 #include "Sodaq_RN2483.h"
 //#include "Sodaq_wdt.h"
 
-//#define DEBUG 1
-#undef DEBUG
+#define DEBUG 1
+//#undef DEBUG
 #define ENABLE_SLEEP 1
 #define HAS_CC 1
 #undef USE_WDT
+
+//#define USE_WDT 1
+
 
 #ifdef USE_WDT
 #define DELAY(x) sodaq_wdt_safe_delay(x)
@@ -75,7 +78,8 @@ static const double case_max_temp = 150; //on fire!
 
 RTCZero rtc;
 
-static int theUpdateRate = 20 * 60;
+//static int theUpdateRate = 20 * 60;
+static int theUpdateRate = 45;
 const static uint16_t recv_buffer_sz = 32;
 
 #ifdef DEBUG
@@ -112,12 +116,11 @@ static bool direction; //true=charge
 static uint8_t recieveBuffer[recv_buffer_sz]; //for incoming LoRa messages
 
 /* use your own keys! */
-const uint8_t devAddr[4] = { 0xB3, 0x20, 0x74, 0x9F };
-const uint8_t nwkSKey[16] = { 0xEE, 0x40, 0x4A, 0x8B, 0x10, 0xDB, 0xA3, 0xC9, 0xC8, 0xB7, 0xAB, 0xDD, 0xC0, 0x20, 0x42, 0x7D }; //msb
-const uint8_t appSKey[16] = { 0x99, 0xA7, 0x70, 0x45, 0x9B, 0xCC, 0xE5, 0x58, 0x9E, 0x60, 0x1E, 0x26, 0x74, 0x73, 0x2A, 0x5B }; //msb
+const uint8_t devEUI[] = { 0xB3, 0xB3, 0xE3, 0x12, 0x45, 0x23, 0x91, 0x21 };
+const uint8_t appEUI[] = { 0x70, 0xB3, 0xD5, 0x7E, 0xD0, 0x00, 0x0B, 0xCF };
+const uint8_t appKey[] = { 0xB8, 0x0A, 0x35, 0x16, 0xD8, 0x86, 0x61, 0x29, 0x8E, 0xAE, 0x4B, 0xD8, 0x37, 0x04, 0x28, 0xE4 };
 
 /* TTN app name: kanaltemp_v2 */
-
 Adafruit_BME280 bme; // I2C
 
 
@@ -150,7 +153,8 @@ void setup()
 
   loraSerial.begin(LoRaBee.getDefaultBaudRate());
  
-  bool connected = LoRaBee.initABP(loraSerial, devAddr, appSKey, nwkSKey, true);
+  bool connected = LoRaBee.initOTA(loraSerial, devEUI,appEUI,appKey);
+
   //LoRaBee.setSf("sf9");
  // LoRaBee.setTxPwr("14"); 
   
