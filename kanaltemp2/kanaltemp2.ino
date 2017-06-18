@@ -25,14 +25,11 @@
 #include <Wire.h>
 #include "Adafruit_BME280.h"
 #include "Sodaq_RN2483.h"
-//#include "Sodaq_wdt.h"
+#include "Sodaq_wdt.h"
 
-//#define DEBUG 1
-#undef DEBUG
-#define ENABLE_SLEEP 1
-#define HAS_CC 1
-#undef USE_WDT
-
+#undef DEBUG 
+#define USE_WDT 1
+ 
 #ifdef USE_WDT
 #define DELAY(x) sodaq_wdt_safe_delay(x)
 #else
@@ -43,15 +40,12 @@
 #define BATVOLTPIN  BAT_VOLT
 static const double ADC_AREF = 3.3;
 static const double BATVOLT_R1 = 4.7;
-static const double BATVOLT_R2 = 10;
+static const double BATVOLT_R2 = 10.0;
 
 //IO port definitions
 #define debugSerial SerialUSB
 #define loraSerial  Serial1
-
-//Coloumb counter _
-#define INT_LINE 4
-#define POL_LINE 5
+ 
 
 //temp sensors
 #define ONE_WIRE_BUS   3
@@ -112,18 +106,19 @@ static bool direction; //true=charge
 static uint8_t recieveBuffer[recv_buffer_sz]; //for incoming LoRa messages
 
 /* use your own keys! */
-const uint8_t devAddr[4] = { 0xB3, 0x20, 0x74, 0x9F };
-const uint8_t nwkSKey[16] = { 0xEE, 0x40, 0x4A, 0x8B, 0x10, 0xDB, 0xA3, 0xC9, 0xC8, 0xB7, 0xAB, 0xDD, 0xC0, 0x20, 0x42, 0x7D }; //msb
-const uint8_t appSKey[16] = { 0x99, 0xA7, 0x70, 0x45, 0x9B, 0xCC, 0xE5, 0x58, 0x9E, 0x60, 0x1E, 0x26, 0x74, 0x73, 0x2A, 0x5B }; //msb
+const uint8_t devEUI[] = { 0x0B, 0x30, 0xB3, 0x0E, 0x30, 0x12, 0x04, 0x50 };
+const uint8_t appEUI[] = { 0x70, 0xB3, 0xD5, 0x7E, 0xD0, 0x00, 0x0B, 0xCF };
+const uint8_t appKey[] = { 0x45, 0x0C, 0xE2, 0x6B, 0x24, 0x43, 0xE1, 0x83, 0xC6, 0x57, 0xF8, 0x34, 0xE7, 0xF1, 0x02, 0x76 };
+
+static bool connected=false;
 
 /* TTN app name: kanaltemp_v2 */
-
 Adafruit_BME280 bme; // I2C
 
 
 void setup()
 {
-  delay(3142 * 2);
+  DELAY(3142 * 2);
 
 #ifdef DEBUG
   debugSerial.begin(57600);
@@ -138,23 +133,19 @@ void setup()
   // Turn the LoRaBee on
   pinMode(BEE_VCC, OUTPUT);
   digitalWrite(BEE_VCC, HIGH);
-
+   DEB("LoRa Bee ON");
   DFlashUltraDeepSleep();  //send SPI flash to ultra deep sleep
-
-#ifdef HAS_CC
-  //coulomb counter
-  pinMode(INT_LINE, INPUT);
-  pinMode(POL_LINE, INPUT);
-  attachInterrupt(INT_LINE, ccisr, LOW);
-#endif
-
-  loraSerial.begin(LoRaBee.getDefaultBaudRate());
  
-  bool connected = LoRaBee.initABP(loraSerial, devAddr, appSKey, nwkSKey, true);
-  //LoRaBee.setSf("sf9");
- // LoRaBee.setTxPwr("14"); 
-  
 
+ 
+  
+  DELAY(1500);
+  loraSerial.begin(LoRaBee.getDefaultBaudRate());
+  DELAY(100);
+  
+  connected = connectTTN();
+
+ 
   //TTN channel plan. 
   LoRaBee.configChFreq(0, 868100000L,0,5,1);
   LoRaBee.configChFreq(1, 868300000L,0,5,1); 
@@ -173,15 +164,18 @@ void setup()
   rtc.begin();
   last_cc_tick = millis();
 
-#ifdef ENABLE_SLEEP
-  SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk; /* Enable deepsleep */
-#endif
-
+   SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk; /* Enable deepsleep */
+ 
   bme.begin();
+ //  XXXXX
 #ifdef USE_WDT  
   sodaq_wdt_enable(WDT_PERIOD_8X);
 #endif
  
+}
+
+boolean connectTTN(){
+  return LoRaBee.initOTA(loraSerial, devEUI,appEUI,appKey);
 }
 
 void alarmMatch()
@@ -199,6 +193,7 @@ void lowPowerSleep(uint16_t sec) {
 
   uint32_t beesleep = 1000L * sec - 500L;
   LoRaBee.sleep(beesleep); //have the LoRa Module wake up 500msec  early  
+  SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk; /* Enable deepsleep */
 
   rtc.setTime(0, 0, 0);
   int w_min = sec / 60;
@@ -211,35 +206,15 @@ void lowPowerSleep(uint16_t sec) {
 
   DEB("sleep until event");
   do {
-
-#ifdef ENABLE_SLEEP
-    __WFI();
-#endif
-
+     __WFI();
+     sodaq_wdt_reset();
+     DELAY(10);
   } while (!intAlarm);  // sleep again until source is rtc alarm
   rtc.disableAlarm();
   DEB("return from sleep");
 }
 
-/*
-   Coulumb Counter interrupt.
-     Reads direction (POL) and increments / decrements global ccsum accordingly.
-*/
-void ccisr()
-{
-  direction = digitalRead(POL_LINE);
-  if (direction) {
-    ccsum++;  //charge
-  } else {
-    ccsum--; //discharge
-  }
-  numTicks++;
-
-  unsigned long now = millis();
-  totalTickTime += now - last_cc_tick;
-  last_cc_tick = now;
-}
-
+ 
 //process incoming LoRa command
 void processCommand(uint16_t numBytesRecieved)
 {
@@ -286,8 +261,9 @@ void loop()
   //power up switch GROVE rail
   pinMode(VCC_SW, OUTPUT);
   digitalWrite(VCC_SW, HIGH);
-  DELAY(50);
-
+  DELAY(100);
+  sodaq_wdt_reset();
+  
   // default (and max) resolution of sensor is 12 bit / 0.0625°C
   // beware: absolute accuracy is ±0.5°C  from -10°C to +85°C for the uncalibrated DS18b20
   float temp1 = readTemp(ONE_WIRE_BUS);
@@ -296,7 +272,12 @@ void loop()
   transmitTemp2 = fitUInt16(temp2, water_min_temp, water_max_temp); // upper sensor
   caseTemp = fitUInt16(readTemp(ONE_WIRE_BUS_CASE), case_min_temp, case_max_temp); // case (battery) temp
 
-
+  DEB("battery");
+  float vbatt = getRealBatteryVoltageMV() / 1000.0;
+  DEB(vbatt);
+  uint16_t vbattui = fitUInt16(vbatt, battery_min_volt, battery_max_volt);
+  DEB(vbattui);
+  
   digitalWrite(VCC_SW, LOW); //power down GROVE rail
 
   DEB("temps")
@@ -312,9 +293,6 @@ void loop()
   uint16_t pressureHPa;
   uint16_t humidity;
   {
-
-   
-
     pressureHPa = round(bme.readPressure() / 100.0F*10.0);
     DEB("pressure");
     DEB(pressureHPa);
@@ -324,27 +302,6 @@ void loop()
     DEB(humidity);
    
   }
-
-  // calculate power avg power consumption
-  if ( numTicks > 0) {
-    unsigned long avgTickTime = totalTickTime / numTicks;
-    double avgTickSeconds = avgTickTime / 1000.0;
-    DEB("avg tick time");
-    DEB(avgTickSeconds);
-    last_pwr_consumption = 614.4 /  avgTickSeconds; // TODO THIS CALCULATION IS WRONG
-    if (direction == false) {
-      last_pwr_consumption =  last_pwr_consumption * -1;
-    }
-    totalTickTime = 0; //reset counters
-    numTicks = 0;
-  } else {
-    last_pwr_consumption = 0; //no data available
-  }
-
-  DEB("battery");
-  float vbatt = getRealBatteryVoltageMV() / 1000.0;
-  DEB(vbatt);
-  uint16_t vbattui = fitUInt16(vbatt, battery_min_volt, battery_max_volt);
 
   uint8_t payload[18];
   // 2  temp (lower sensor) (scaled -5 .. 30)
@@ -377,8 +334,7 @@ void loop()
   payload[17] = (uint8_t) (pressureHPa & 0xff);
 
 
-  DEB("coulomb ticks=");
-  DEB(ccsum);
+  
 
   unsigned long  startmillis = millis();
   uint8_t res = LoRaBee.send(1, payload, sizeof(payload));
@@ -394,38 +350,41 @@ void loop()
       DEB("There was no response from the device.");
       break;
     case Timeout:
-      DEB("Connection timed-out. Check your serial connection to the device! Sleeping for 20sec.");
-      delay(20000);
+      DEB("Connection timed-out. Check your serial connection to the device! Sleeping for 2sec.");
+      DELAY(20000);
       break;
     case PayloadSizeError:
       DEB("The size of the payload is greater than allowed. Transmission failed!");
       break;
     case InternalError:
       DEB("Oh No! This shouldn't happen. Something is really wrong! Try restarting the device!\r\nThe program will now halt.");
-      delay(30000);
-      autonomoReset();
+      DELAY(20000);
+      //autonomoReset();
       break;
     case Busy:
-      DEB("The device is busy. Sleeping for 10 extra seconds.");
-      delay(10000);
+      DEB("The device is busy. Sleeping for 1 extra seconds.");
+      DELAY(20000);
       break;
     case NetworkFatalError:
       DEB("There is a non-recoverable error with the network connection. You should re-connect.\r\nThe program will now halt.");
-      delay(5000);
-      autonomoReset();
+      DELAY(20000);
+      //autonomoReset();
       break;
     case NotConnected:
       DEB("The device is not connected to the network. Please connect to the network before attempting to send data.\r\nThe program will now halt.");
-      delay(5000);
-      autonomoReset();
+      DELAY(20000);
+      connectTTN();
+      //autonomoReset();
       break;
     case NoAcknowledgment:
       DEB("There was no acknowledgment sent back!");
+      DELAY(2000);
       break;
     default:
       break;
   }
 
+// TODO check for err condition 
   uint16_t numBytesRecieved = LoRaBee.receive(recieveBuffer,  recv_buffer_sz);
   if (numBytesRecieved > 0) {
     processCommand(numBytesRecieved);
@@ -438,8 +397,10 @@ void loop()
 double getRealBatteryVoltageMV()
 {
   uint16_t batteryVoltage = analogRead(BATVOLTPIN);
+
   return (ADC_AREF / 1.023) * (BATVOLT_R1 + BATVOLT_R2) / BATVOLT_R2 * batteryVoltage;
 }
+
 
 void DFlashUltraDeepSleep()
 {
